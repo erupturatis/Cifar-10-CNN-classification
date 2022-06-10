@@ -97,7 +97,7 @@ def create_model(toggle:bool = False):
 
 
 
-def train_model(net, lossfunction, optimizer, train_loader, epochs:int = 50):
+def train_model(net, lossfunction, optimizer, train_loader, device, epochs:int = 20):
 
     train_accuracy = []
     losses = []
@@ -109,7 +109,11 @@ def train_model(net, lossfunction, optimizer, train_loader, epochs:int = 50):
         i = 0
         for X,y in train_loader:
             i+=1
-            print(f'epoch {epochi} and batch {i}')
+            if i%50 == 0 :print(f'epoch {epochi} and batch {i}')
+
+            X = X.to(device)
+            y = y.to(device)
+
             yHat = net(X)
             loss = lossfunction(yHat,y)
 
@@ -123,8 +127,15 @@ def train_model(net, lossfunction, optimizer, train_loader, epochs:int = 50):
             accuracyPct = 100*torch.mean(matchesNumeric)
             batch_accuracy.append(accuracyPct)
 
-        train_accuracy.append(np.mean(batch_accuracy))
-        losses.append (np.mean(batch_loss))
+        batch_accuracy = torch.tensor(batch_accuracy)
+        batch_accuracy = batch_accuracy.to('cpu')
+        batch_loss = torch.tensor(batch_loss)
+        batch_loss = batch_loss.to('cpu')
+
+        #print(batch_accuracy.device)
+    
+        train_accuracy.append(torch.mean(batch_accuracy))
+        losses.append (torch.mean(batch_loss))
     
     return train_accuracy,losses
 
@@ -148,18 +159,27 @@ def data_processing(data,labels):
     return train_loader,test_loader
 
 def plot_lists(*args):
-    fig,ax = plt.subplot(1,len(args))
+    a = (len(args))
+    print(a)
+    fig,ax = plt.subplots(1,a)
 
-    for i,list in args:
+    #plt.plot(*args)
+    i = 0
+    for list in args:
         ax[i].plot(list,'o')
+        i+=1
 
     plt.show()
 
 def main():
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    # device = 'cpu'
     data,labels = load_initial_data()
     train_loader, test_loader = data_processing(data,labels)
     net,lossfun,optimizer = create_model(False)
-    train_acc,losses = train_model(net,lossfunction=lossfun,optimizer=optimizer,train_loader=train_loader,epochs=50)
+    net.to(device)
+    epochs = 50
+    train_acc,losses = train_model(net,lossfunction=lossfun,optimizer=optimizer,train_loader=train_loader,device=device,epochs=epochs)
     plot_lists(train_acc,losses)
 
     # visualize_image()
